@@ -1,10 +1,14 @@
-import React, { useState } from 'react'
+import React, {useContext, useState} from 'react'
 import AuthLayout from "../../components/layouts/AuthLayout.jsx";
 import {Link, useNavigate} from "react-router-dom";
 import {LuFileInput} from "react-icons/lu";
 import Input from "../../components/Inputs/Input.jsx";
 import {validateEmail} from "../../utils/helper.js";
 import ProfilePhotoSelector from "../../components/Inputs/ProfilePhotoSelector.jsx";
+import axiosInstance from "../../utils/axiosInstance.js";
+import {API_PATHS} from "../../utils/apiPaths.js";
+import {UserContext} from "../../context/userContext.jsx";
+import uploadImage from "../../utils/uploadImage.js";
 
 const SignUp = () => {
     const [profilePic, setProfilePic] = useState(null);
@@ -13,6 +17,8 @@ const SignUp = () => {
     const [password, setPassword] = useState(null);
 
     const [error, setError] = useState(null);
+
+    const { updateUser } = useContext(UserContext);
 
     const navigate = useNavigate();
 
@@ -37,11 +43,70 @@ const SignUp = () => {
             return;
         }
 
+        if (!password || password.length < 8) {
+            setError("Password must be at least 8 characters long.");
+            return;
+        }
+
         setError("");
 
-        // SignUp API Call
-    }
+        // try {
+        //     const response = await fetch("http://localhost:8000/api/v1/auth/register", {
+        //         method: "POST",
+        //         headers: {
+        //             "Content-Type": "application/json", // <--- ЭТА СТРОКА КРИТИЧЕСКИ ВАЖНА
+        //         },
+        //         body: JSON.stringify({
+        //             fullName,
+        //             email,
+        //             password,
+        //         }),
+        //     });
+        //
+        //     const data = await response.json();
+        //
+        //     if (data.error) {
+        //         setError(data.message);
+        //         return;
+        //     }
+        //
+        //     // Если успех - переходим на логин или дашборд
+        //     navigate("/dashboard");
+        //
+        // } catch (error) {
+        //     setError("Something went wrong. Please try again.");
+        // }v
 
+        //SignUp API Call
+        try {
+
+            // Upload image if present
+            if (profilePic) {
+                const imgUploadRes = await uploadImage(profilePic);
+                profileImageUrl = imgUploadRes.imageUrl || "";
+            }
+
+            const response = await axiosInstance.post(API_PATHS.AUTH.REGISTER, {
+                fullName,
+                email,
+                password,
+                profileImageUrl
+            });
+            const {token, user} = response.data;
+
+            if (token) {
+                localStorage.setItem("token", token);
+                updateUser(user);
+                navigate("/dashboard");
+            }
+        } catch (error) {
+            if (error.response && error.response.data.message) {
+                setError(error.response.data.message);
+            } else {
+                setError("Something went wrong. Please try again.");
+            }
+        }
+    };
 
 
     return (
@@ -102,3 +167,5 @@ const SignUp = () => {
 };
 
 export default SignUp
+
+
